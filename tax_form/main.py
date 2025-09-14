@@ -149,11 +149,38 @@ def aggregate_by_date(data: List[Dict[str, Any]]) -> Dict[str, float]:
     return date_quantities
 
 
-def display_results(data: List[Dict[str, Any]]) -> None:
-    """Display the aggregated results by date only."""
+def display_results(data: List[Dict[str, Any]], show_individual: bool = False) -> None:
+    """Display the aggregated results by date and optionally individual transactions."""
     if not data:
         print("No data to display")
         return
+
+    # Show individual transactions if requested
+    if show_individual:
+        print("=" * 80)
+        print("INDIVIDUAL TRANSACTIONS")
+        print("=" * 80)
+        print(f"{'Date':<15} {'Quantity':<15}")
+        print("-" * 30)
+
+        for i, transaction in enumerate(data, 1):
+            date_sold = transaction.get("Date sold or transferred", "")
+            quantity = transaction.get("Quantity", "0")
+
+            # Format date for display
+            from datetime import datetime
+
+            try:
+                dt = datetime.strptime(date_sold, "%b-%d-%Y")
+                formatted_date = dt.strftime("%d.%m.%Y")
+            except ValueError:
+                formatted_date = date_sold
+
+            print(f"{formatted_date:<15} {quantity:<15}")
+
+        print("-" * 30)
+        print(f"Total individual transactions: {len(data)}")
+        print("\n")
 
     # Show aggregated data by date
     aggregated_data = aggregate_by_date(data)
@@ -324,12 +351,12 @@ def extract_espp_from_text(text: str) -> List[Dict[str, str]]:
     return espp_data
 
 
-def extract_811821_data(pdf_path: str) -> Dict[str, List[Dict[str, str]]]:
+def extract_vested_stocks(pdf_path: str) -> Dict[str, List[Dict[str, str]]]:
     """
-    Extract both vested stocks and ESPP data from 811821.pdf.
+    Extract both vested stocks and ESPP data from vested stocks PDF.
 
     Args:
-        pdf_path: Path to the 811821.pdf file
+        pdf_path: Path to the vested stocks PDF file
 
     Returns:
         Dictionary containing both vested stocks and ESPP data
@@ -371,7 +398,9 @@ def extract_811821_data(pdf_path: str) -> Dict[str, List[Dict[str, str]]]:
     return results
 
 
-def display_vested_results(data: Dict[str, List[Dict[str, str]]]) -> None:
+def display_vested_results(
+    data: Dict[str, List[Dict[str, str]]], show_individual: bool = False
+) -> None:
     """Display the results from salary_certificate PDF extraction."""
     print("=" * 80)
     print("VESTED STOCKS 2024")
@@ -379,6 +408,23 @@ def display_vested_results(data: Dict[str, List[Dict[str, str]]]) -> None:
 
     vested_stocks = data["vested_stocks"]
     if vested_stocks:
+        # Show individual vested transactions if requested
+        if show_individual:
+            print("INDIVIDUAL VESTED TRANSACTIONS")
+            print("=" * 80)
+            print(f"{'Vest Date':<15} {'Quantity':<15}")
+            print("-" * 30)
+
+            for entry in vested_stocks:
+                vest_date = entry["Vest Date"]
+                shares = entry["Shares"]
+                print(f"{vest_date:<15} {shares:<15}")
+
+            print("-" * 30)
+            print(f"Total individual vested transactions: {len(vested_stocks)}")
+            print("\nAGGREGATED VESTED STOCKS BY DATE")
+            print("=" * 80)
+
         # Aggregate shares by vest date
         date_shares = {}
         for entry in vested_stocks:
@@ -453,22 +499,28 @@ def display_vested_results(data: Dict[str, List[Dict[str, str]]]) -> None:
     print("=" * 80)
 
 
-def read_vested_data(pdf_path: str) -> float:
+def read_vested_data(
+    pdf_path: str, show_individual: bool = False
+) -> tuple[float, float]:
     """Extract and display data from salary_certificate PDF.
 
+    Args:
+        pdf_path: Path to the PDF file
+        show_individual: Whether to show individual vested transactions
+
     Returns:
-        Total shares vested
+        Tuple of (total shares vested, total shares purchased)
     """
     if not Path(pdf_path).exists():
         print(f"PDF file not found: {pdf_path}")
-        return 0.0
+        return 0.0, 0.0
 
     try:
         # Extract data from PDF
         data = extract_vested_data(pdf_path)
 
         if data["vested_stocks"] or data["espp_data"]:
-            display_vested_results(data)
+            display_vested_results(data, show_individual)
 
             # Calculate total vested shares
             total_vested = 0.0
@@ -479,18 +531,32 @@ def read_vested_data(pdf_path: str) -> float:
                 except ValueError:
                     pass
 
-            return total_vested
+            # Calculate total purchased shares from ESPP
+            total_purchased = 0.0
+            for entry in data["espp_data"]:
+                try:
+                    purchased_shares = entry["Purchased Shares"]
+                    shares = float(purchased_shares.replace(",", "").replace("'", ""))
+                    total_purchased += shares
+                except ValueError:
+                    pass
+
+            return total_vested, total_purchased
         else:
             print("No data extracted from PDF")
-            return 0.0
+            return 0.0, 0.0
 
     except Exception as e:
         print(f"Error processing PDF: {e}")
-        return 0.0
+        return 0.0, 0.0
 
 
-def read_sold_shares(pdf_path: str) -> float:
+def read_sold_shares(pdf_path: str, show_individual: bool = False) -> float:
     """Extract and display sold shares data.
+
+    Args:
+        pdf_path: Path to the PDF file
+        show_individual: Whether to show individual transactions
 
     Returns:
         Total shares sold
@@ -504,7 +570,7 @@ def read_sold_shares(pdf_path: str) -> float:
         transactions = extract_table_from_pdf(pdf_path)
 
         if transactions:
-            display_results(transactions)
+            display_results(transactions, show_individual)
 
             # Calculate total sold shares
             total_sold = 0.0
@@ -525,16 +591,19 @@ def read_sold_shares(pdf_path: str) -> float:
         return 0.0
 
 
-def display_summary(total_vested: float, total_sold: float) -> None:
-    """Display summary of vested vs sold shares."""
+def display_summary(
+    total_vested: float, total_purchased: float, total_sold: float
+) -> None:
+    """Display summary of vested, purchased, and sold shares."""
     print("\n" + "=" * 80)
     print("SUMMARY 2024")
     print("=" * 80)
     print(f"{'Total Vested Shares:':<25} {total_vested:<15.3f}")
+    print(f"{'Total Purchased Shares:':<25} {total_purchased:<15.3f}")
     print(f"{'Total Sold Shares:':<25} {total_sold:<15.3f}")
     print("-" * 40)
 
-    difference = total_vested - total_sold
+    difference = (total_vested + total_purchased) - total_sold
     if difference >= 0:
         print(f"{'Net Position (Remaining):':<25} {difference:<15.3f}")
     else:
@@ -559,8 +628,11 @@ Examples:
   # Process only vested stocks
   python tax_form/main.py --vested-pdf "data/salary_certificate.pdf" --no-sold
   
-  # Process only sold shares
-  python tax_form/main.py --sold-pdf data/sales.pdf --no-vested
+  # Process only sold shares with individual transactions shown
+  python tax_form/main.py --sold-pdf data/sales.pdf --no-vested --show-individual
+  
+  # Show individual transactions for both types
+  python tax_form/main.py --show-individual
         """,
     )
 
@@ -590,6 +662,12 @@ Examples:
         "--no-sold", action="store_true", help="Skip processing sold shares data"
     )
 
+    parser.add_argument(
+        "--show-individual",
+        action="store_true",
+        help="Show individual transactions in addition to aggregated data",
+    )
+
     return parser.parse_args()
 
 
@@ -600,11 +678,14 @@ if __name__ == "__main__":
     args = parse_arguments()
 
     total_vested = 0.0
+    total_purchased = 0.0
     total_sold = 0.0
 
     # Process vested stocks and ESPP data
     if not args.no_vested:
-        total_vested = read_vested_data(args.vested_pdf)
+        total_vested, total_purchased = read_vested_data(
+            args.vested_pdf, args.show_individual
+        )
 
     # Add separator if processing both types
     if not args.no_vested and not args.no_sold:
@@ -612,8 +693,8 @@ if __name__ == "__main__":
 
     # Process sold shares data
     if not args.no_sold:
-        total_sold = read_sold_shares(args.sold_pdf)
+        total_sold = read_sold_shares(args.sold_pdf, args.show_individual)
 
     # Display summary if both types were processed
     if not args.no_vested and not args.no_sold:
-        display_summary(total_vested, total_sold)
+        display_summary(total_vested, total_purchased, total_sold)

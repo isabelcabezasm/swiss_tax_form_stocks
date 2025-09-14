@@ -1,26 +1,55 @@
 # Tax Form Processing Application
 
-A Python application for extracting and processing stock transaction data from PDF tax documents.
+Each time I need to fill out my Swiss tax forms and enter my vested
+and sold stocks from Microsoft one by one, it's a nightmare :D So I created this
+application that takes as input the Fidelity "Custom transaction summary" for
+the year and the "Salary certificate" that Microsoft Schweiz provides to us.
+
+It reads the individual transactions and shows the aggregated (sold and vested) quantities by date
+in the Swiss date format (dd.mm.yyyy), so I only need to copy and paste.
+
+> A Python application for extracting and processing stock transaction data from
+PDF tax documents.
 
 ## Overview
 
-This application processes PDF documents containing stock transaction data for tax reporting purposes. It extracts information from two types of documents:
+This application processes PDF documents containing stock transaction data for
+tax reporting purposes. It extracts information from two types of documents:
 
-1. **salary_certificate.pdf** - Contains vested stock awards and ESPP (Employee Stock Purchase Plan) data
-2. **Fidelity NetBenefits transaction summary** - Contains sold shares transaction data
+1. **salary_certificate.pdf** - Contains vested stock awards and ESPP (Employee
+   Stock Purchase Plan) data
+
+   You can download this document from the payslip (Employee Portal) website:
+   https://interactpayroll.ey.com/ > Go to "My documents" and it's the one with
+   your employee number as the file name.
+
+2. **Fidelity NetBenefits transaction summary** - Contains sold shares
+   transaction data. Here I'm using only the pages where the table with sold
+   shares is located (print only these pages and save as PDF).
+
+   Find this document on the Net Benefits (Fidelity) website. Under "Statements/Records" > Custom transaction summary. Download the summary for the whole year.
+
+   Then print as PDF only the pages that contain the table with "Sold shares".
 
 ## Features
 
-- **Vested Stock Extraction**: Parses vested stock data with vest dates and share quantities
+- **Vested Stock Extraction**: Parses vested stock data with vest dates and
+  share quantities
 - **ESPP Data Processing**: Extracts Employee Stock Purchase Plan information
-- **Sold Shares Analysis**: Processes sold stock transactions with aggregation by date
-- **Clean Table Output**: Displays data in formatted tables with consistent date formatting (DD.MM.YYYY)
+- **Sold Shares Analysis**: Processes sold stock transactions with aggregation
+  by date
+- **Clean Table Output**: Displays data in formatted tables with consistent date
+  formatting (DD.MM.YYYY)
 - **Date Aggregation**: Automatically sums shares by the same vest/sell dates
+- **Individual Transaction Display**: Option to show all individual transactions
+  before aggregation
 - **Multiple PDF Support**: Processes multiple PDF documents in a single run
 
 ## Sample Output
 
-```
+### Default Output (Aggregated Data Only)
+
+```text
 ================================================================================
 VESTED STOCKS 2024
 ================================================================================
@@ -29,14 +58,10 @@ Vest Date       Quantity
 29.02.2024      12.500         
 15.04.2024      24.750         
 30.05.2024      3.000          
-31.05.2024      8.250          
-30.08.2024      3.000          
-31.08.2024      10.000         
-15.10.2024      25.000         
-30.11.2024      10.000         
+...  
 ------------------------------
 Total unique dates: 8
-Total shares: 96.500
+Total shares: 6.500
 
 ================================================================================
 ESPP (Employee Stock Purchase Plan)
@@ -46,8 +71,38 @@ Off Period      Purchased Shares
 092024          20.0000             
 -----------------------------------
 Total entries: 1
-Total purchased shares: 20.0000
+Total purchased shares: 3.0000
 ================================================================================
+
+================================================================================
+SUMMARY 2024
+================================================================================
+Total Vested Shares:      99.310         
+Total Purchased Shares:   25.047         
+Total Sold Shares:        165.347        
+----------------------------------------
+Total Owned Shares:       124.357        
+Net Position (Oversold):  40.990         
+================================================================================
+```
+
+### With Individual Transactions (--show-individual)
+
+When using the `--show-individual` flag, you'll also see detailed transaction
+data before the aggregated summary:
+
+```text
+================================================================================
+INDIVIDUAL TRANSACTIONS
+================================================================================
+Date            Quantity       
+------------------------------
+16.01.2024      2.0000         
+16.01.2024      3.0000         
+02.02.2024      1.0000              
+...
+------------------------------
+Total individual transactions: 45
 
 ============================================================
 AGGREGATED QUANTITIES BY DATE:
@@ -57,23 +112,29 @@ Sell Date                 Quantity
 16.01.2024                5.0000         
 02.02.2024                7.5000         
 27.02.2024                2.5000         
-08.04.2024                25.0000        
-12.06.2024                45.0000         
-07.10.2024                20.0000        
-25.10.2024                15.0000        
-28.10.2024                12.0000        
-09.12.2024                8.0000         
-11.12.2024                18.0000        
+...    
 ============================================================
 Total unique dates: 10
 Total individual transactions: 45
-Grand total quantity: 158.0000
+Grand total quantity: 15.0000
 ============================================================
+
+================================================================================
+SUMMARY 2024
+================================================================================
+Total Vested Shares:      99.310         
+Total Purchased Shares:   25.047         
+Total Sold Shares:        165.347        
+----------------------------------------
+Total Owned Shares:       124.357        
+Net Position (Oversold):  40.990         
+================================================================================
 ```
 
 ## Development Setup
 
-This project uses a development container for a consistent development environment.
+This project uses a development container for a consistent development
+environment.
 
 ### Prerequisites
 
@@ -83,15 +144,18 @@ This project uses a development container for a consistent development environme
 ### Getting Started
 
 1. Clone the repository:
+
    ```bash
    git clone <repository-url>
    cd tax_form
    ```
 
 2. Open in VS Code and reopen in container when prompted, or:
+
    ```bash
    code .
    ```
+
    Then use `Ctrl+Shift+P` → "Dev Containers: Reopen in Container"
 
 3. The dev container will automatically:
@@ -104,8 +168,10 @@ This project uses a development container for a consistent development environme
 ### Running the Application
 
 Place your PDF files in the `data/` directory (or specify custom paths):
+
 - `salary_certificate.pdf` - Stock awards and ESPP document
-- `Custom transaction summary - Fidelity NetBenefits_ only sales.pdf` - Sold shares document
+- `Custom transaction summary - Fidelity NetBenefits_ only sales.pdf` - Sold
+  shares document
 
 #### Basic Usage
 
@@ -121,13 +187,13 @@ python tax_form/main.py --help
 
 ```bash
 # Specify custom paths for both PDFs
-python tax_form/main.py --vested-pdf "path/to/salary_certificate.pdf" --sold-pdf path/to/sales.pdf
+python tax_form/main.py --vested-pdf "path/to/salary_certificate.pdf" --sold-pdf "path/to/sales.pdf"
 
 # Use custom path for vested stocks only
 python tax_form/main.py --vested-pdf "custom/path/salary_certificate.pdf"
 
 # Use custom path for sold shares only  
-python tax_form/main.py --sold-pdf custom/path/fidelity_sales.pdf
+python tax_form/main.py --sold-pdf "custom/path/fidelity_sales.pdf"
 ```
 
 #### Selective Processing
@@ -143,29 +209,52 @@ python tax_form/main.py --no-vested
 python tax_form/main.py --vested-pdf "data/my_salary_certificate.pdf" --no-sold
 ```
 
+#### Detailed Transaction Analysis
+
+```bash
+# Show individual transactions for sold shares only
+python tax_form/main.py --sold-pdf "data/sales.pdf" --no-vested --show-individual
+
+# Show individual transactions for both vested and sold shares
+python tax_form/main.py --show-individual
+
+# Combine with custom paths and show individual transactions
+python tax_form/main.py --vested-pdf "data/salary_certificate.pdf" --sold-pdf "data/sales.pdf" --show-individual
+```
+
 #### Command Line Options
 
-- `--vested-pdf FILEPATH`: Path to PDF containing vested stocks and ESPP data (default: `data/salary_certificate.pdf`)
-- `--sold-pdf FILEPATH`: Path to PDF containing sold shares data (default: `data/Custom transaction summary - Fidelity NetBenefits_ only sales.pdf`)
+- `--vested-pdf FILEPATH`: Path to PDF containing vested stocks and ESPP data
+  (default: `data/salary_certificate.pdf`)
+- `--sold-pdf FILEPATH`: Path to PDF containing sold shares data (default:
+  `data/Custom transaction summary - Fidelity NetBenefits_ only sales.pdf`)
 - `--no-vested`: Skip processing vested stocks and ESPP data
 - `--no-sold`: Skip processing sold shares data
+- `--show-individual`: Show individual transactions in addition to aggregated
+  data
 - `-h, --help`: Show help message and exit
 
 ### Supported PDF Formats
 
 #### salary_certificate.pdf Structure
+
 The application expects this document to contain:
-- **Vested Stocks 2024** section with columns: Award Date, Award ID, Vest Date, Award Price, Market Value, Shares, etc.
-- **ESPP (Employee Stock Purchase Plan)** section with columns: Off Period, Purchased Shares, FMV Price, etc.
+
+- **Vested Stocks 2024** section with columns: Award Date, Award ID, Vest Date,
+  Award Price, Market Value, Shares, etc.
+- **ESPP (Employee Stock Purchase Plan)** section with columns: Off Period,
+  Purchased Shares, FMV Price, etc.
 
 #### Fidelity Transaction Summary
+
 The application processes transaction data with pattern matching for:
+
 - Date sold or transferred (format: MMM-DD-YYYY)
 - Quantity of shares sold
 
 ### Project Structure
 
-```
+```text
 tax_form/
 ├── .devcontainer/          # Development container configuration
 ├── data/                   # PDF files to process
@@ -205,6 +294,7 @@ mypy .
 ## Dependencies
 
 Key dependencies used in this project:
+
 - **pdfplumber**: PDF text extraction and table parsing
 - **pathlib**: File path handling
 - **datetime**: Date parsing and formatting
@@ -246,4 +336,5 @@ Key dependencies used in this project:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the LICENSE file for
+details.

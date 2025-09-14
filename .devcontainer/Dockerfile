@@ -17,4 +17,6 @@ RUN curl -sSL -O https://packages.microsoft.com/config/ubuntu/22.04/packages-mic
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
-    shellcheck
+    shellcheck \
+    python3-dev \
+    build-essential
